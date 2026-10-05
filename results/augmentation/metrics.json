@@ -1,0 +1,60 @@
+{
+  "split": "test",
+  "accuracy": 0.8148,
+  "balanced_accuracy": 0.5759,
+  "macro_f1": 0.5922,
+  "weighted_f1": 0.8033,
+  "macro_recall": 0.5759,
+  "macro_precision": 0.7302,
+  "per_class": {
+    "akiec": {
+      "name": "Actinic keratoses / intraepithelial carcinoma",
+      "precision": 0.375,
+      "recall": 0.5869565217391305,
+      "f1_score": 0.4576271186440678,
+      "support": 46
+    },
+    "bcc": {
+      "name": "Basal cell carcinoma",
+      "precision": 0.6235294117647059,
+      "recall": 0.7162162162162162,
+      "f1_score": 0.6666666666666666,
+      "support": 74
+    },
+    "bkl": {
+      "name": "Benign keratosis-like lesions",
+      "precision": 0.7431192660550459,
+      "recall": 0.5159235668789809,
+      "f1_score": 0.6090225563909775,
+      "support": 157
+    },
+    "df": {
+      "name": "Dermatofibroma",
+      "precision": 1.0,
+      "recall": 0.11764705882352941,
+      "f1_score": 0.21052631578947367,
+      "support": 17
+    },
+    "mel": {
+      "name": "Melanoma",
+      "precision": 0.6634615384615384,
+      "recall": 0.4339622641509434,
+      "f1_score": 0.5247148288973384,
+      "support": 159
+    },
+    "nv": {
+      "name": "Melanocytic nevi",
+      "precision": 0.8829174664107485,
+      "recall": 0.9603340292275574,
+      "f1_score": 0.92,
+      "support": 958
+    },
+    "vasc": {
+      "name": "Vascular lesions",
+      "precision": 0.8235294117647058,
+      "recall": 0.7,
+      "f1_score": 0.7567567567567568,
+      "support": 20
+    }
+  }
+}

@@ -1,0 +1,50 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.env
+.venv
+venv/
+
+# Heavy Dataset Images (Managed via DATA.md and download_dataset.py)
+data/images/
+data/archive/
+*.zip
+*.tar.gz
+*.7z
+
+# Large Model Checkpoints (>100MB exceeds GitHub push limit)
+*.pth
+*.pt
+*.bin
+*.onnx
+
+# System & IDE files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
