@@ -1,6 +1,6 @@
 """
-train.py - Pipeline Huấn luyện Mô hình ResNet-50 trên HAM10000.
-Tối ưu hóa với AdamW, Cosine Annealing LR và lưu checkpoint tốt nhất theo Macro F1.
+train.py - Training Pipeline for ResNet-50 on HAM10000.
+Optimized with AdamW, Cosine Annealing LR, and Best Validation Macro F1 Checkpointing.
 """
 
 import sys
@@ -26,7 +26,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def get_grad_scaler():
-    """Hỗ trợ tương thích ngược GradScaler giữa các phiên bản PyTorch (Torch 2.0 -> 2.6+)."""
+    """Support backward compatibility for GradScaler across PyTorch versions (2.0 -> 2.6+)."""
     if hasattr(torch, "amp") and hasattr(torch.amp, "GradScaler"):
         try:
             return torch.amp.GradScaler('cuda', enabled=(DEVICE.type == 'cuda'))
@@ -78,16 +78,16 @@ def train_model(
     num_workers: int = 2,
     save_dir: str = "results/exp"
 ):
-    # Guard chống cân bằng lớp 2 lần (Double Balancing)
+    # Scientific guard against double class balancing
     if use_weighted_sampler and loss_type == "weighted_ce":
         raise ValueError(
-            "CẢNH BÁO KHOA HỌC: Không thể dùng đồng thời 'use_weighted_sampler=True' và 'loss_type=weighted_ce'. "
-            "Việc này sẽ làm bù trừ mất cân bằng 2 lần (Double Class Balancing), làm lệch nghiêm trọng phân phối xác suất!"
+            "Scientific Guard: Cannot combine 'use_weighted_sampler=True' with 'loss_type=weighted_ce'. "
+            "This causes double class balancing and severely distorts probability distributions."
         )
     if use_weighted_sampler and loss_type == "focal" and use_alpha:
         raise ValueError(
-            "CẢNH BẢO KHOA HỌC: Không thể kết hợp 'use_weighted_sampler=True' và 'use_alpha=True' cho Focal Loss. "
-            "Việc này sẽ tính trọng số lớp 2 lần (Double Balancing)!"
+            "Scientific Guard: Cannot combine 'use_weighted_sampler=True' with 'use_alpha=True' in Focal Loss. "
+            "This performs double class balancing."
         )
 
     set_seed(42)
@@ -109,7 +109,7 @@ def train_model(
 
     best_macro_f1 = 0.0
     history = []
-    print(f"[*] Bắt đầu huấn luyện trên thiết bị: {DEVICE}")
+    print(f"[*] Starting training on device: {DEVICE}")
     print(f"[*] Loss: {loss_type} (alpha={use_alpha}) | Weighted Sampler: {use_weighted_sampler} | Augmentation: {use_aug}")
 
     for epoch in range(1, epochs + 1):
@@ -139,20 +139,19 @@ def train_model(
                 {'epoch': epoch, 'model_state_dict': model.state_dict(), 'val_macro_f1': val_f1},
                 save_path / "best_model.pth"
             )
-            print(f"  [+] Đã lưu checkpoint mới tốt nhất tại epoch {epoch} (Macro F1: {val_f1:.4f})")
+            print(f"  [+] New best checkpoint saved at epoch {epoch} (Val Macro F1: {val_f1:.4f})")
 
-    # Lưu lịch sử huấn luyện
     pd.DataFrame(history).to_csv(save_path / "training_history.csv", index=False)
-    print(f"[*] Hoàn thành huấn luyện. Best Val Macro F1: {best_macro_f1:.4f}")
-    print(f"[*] Lịch sử huấn luyện đã được lưu tại: {save_path / 'training_history.csv'}")
+    print(f"[*] Training complete. Best Val Macro F1: {best_macro_f1:.4f}")
+    print(f"[*] Training history saved to: {save_path / 'training_history.csv'}")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Huấn luyện ResNet-50 trên HAM10000")
+    parser = argparse.ArgumentParser(description="Train ResNet-50 on HAM10000")
     parser.add_argument("--epochs", type=int, default=15)
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--loss", type=str, default="ce", choices=["ce", "focal", "weighted_ce"])
-    parser.add_argument("--use_alpha", action="store_true", help="Bật alpha-weighting cho Focal Loss")
+    parser.add_argument("--use_alpha", action="store_true", help="Enable alpha class weights for Focal Loss")
     parser.add_argument("--weighted_sampler", action="store_true")
     parser.add_argument("--aug", action="store_true")
     parser.add_argument("--num_workers", type=int, default=2)

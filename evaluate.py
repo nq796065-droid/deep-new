@@ -1,6 +1,7 @@
 """
-evaluate.py - Đánh giá mô hình trên tập Test (HAM10000).
-Tính toán: Accuracy, Balanced Accuracy, Macro F1, Recall, Precision, Melanoma Recall, Macro AUC và Confusion Matrix.
+evaluate.py - Evaluation script for HAM10000 Test Set.
+Computes: Overall Accuracy, Balanced Accuracy, Macro F1, Weighted F1,
+Melanoma Recall, Macro OvR ROC-AUC, Per-Class Breakdown, and Confusion Matrix.
 """
 
 import sys
@@ -31,7 +32,7 @@ LABELS = list(range(len(CLASS_NAMES)))
 
 
 def find_default_checkpoint() -> Path:
-    """Tự động phát hiện checkpoint tốt nhất có sẵn trong thư mục results."""
+    """Automatically detect best available checkpoint in results directory."""
     candidates = [
         Path("results/weighted_sampling_model.pth"),
         Path("results/weighted_sampling/best_model.pth"),
@@ -46,16 +47,16 @@ def find_default_checkpoint() -> Path:
 
 def resolve_checkpoint(name_or_path: str = None) -> Path:
     """
-    Tìm kiếm checkpoint theo đường dẫn hoặc tên cấu hình.
-    Nếu không truyền, fallback an toàn về checkpoint có sẵn.
-    Nếu truyền đường dẫn cụ thể mà không tìm thấy -> raise FileNotFoundError.
+    Find checkpoint by path or experiment name.
+    If none provided, safely fallback to available checkpoint.
+    If specific name provided but missing, raise FileNotFoundError.
     """
     if name_or_path is None or str(name_or_path).strip() == "":
         default_ckpt = find_default_checkpoint()
         if not default_ckpt.exists():
             raise FileNotFoundError(
-                "Không tìm thấy checkpoint mặc định nào trong thư mục results/. "
-                "Vui lòng chỉ định rõ qua tham số --checkpoint."
+                "No default checkpoint found in results/ directory. "
+                "Please specify a path using --checkpoint."
             )
         return default_ckpt
 
@@ -72,15 +73,14 @@ def resolve_checkpoint(name_or_path: str = None) -> Path:
             return candidate
 
     raise FileNotFoundError(
-        f"Không tìm thấy file checkpoint: '{name_or_path}'. "
-        f"Vui lòng kiểm tra lại đường dẫn trong thư mục results/."
+        f"Checkpoint file not found: '{name_or_path}'. "
+        f"Please check the path in results/ directory."
     )
 
 
 def run_evaluation(checkpoint_path: Path = None, save_cm: bool = True):
     resolved_ckpt = resolve_checkpoint(str(checkpoint_path) if checkpoint_path else None)
 
-    # Đặt tên mô hình chuẩn xác, tránh bị trùng chữ "best" khi lưu từ các thư mục con
     if resolved_ckpt.stem in ["best_model", "best"]:
         model_name = resolved_ckpt.parent.name
     else:
@@ -90,8 +90,8 @@ def run_evaluation(checkpoint_path: Path = None, save_cm: bool = True):
     print("      OFFICIAL BENCHMARK TEST SET EVALUATION (HAM10000)")
     print("=" * 76)
     print(f"[*] Checkpoint : {resolved_ckpt}")
-    print(f"[*] Cấu hình   : {model_name}")
-    print(f"[*] Thiết bị   : {DEVICE}")
+    print(f"[*] Config     : {model_name}")
+    print(f"[*] Device     : {DEVICE}")
 
     _, _, test_loader = get_dataloaders()
     model = get_model(num_classes=7, pretrained=False).to(DEVICE)
@@ -119,7 +119,6 @@ def run_evaluation(checkpoint_path: Path = None, save_cm: bool = True):
     macro_rec = recall_score(y_true, y_pred, labels=LABELS, average="macro", zero_division=0)
     macro_prec = precision_score(y_true, y_pred, labels=LABELS, average="macro", zero_division=0)
 
-    # Tính Macro One-vs-Rest AUC
     try:
         macro_auc = roc_auc_score(y_true, y_prob, labels=LABELS, multi_class="ovr", average="macro")
     except Exception:
@@ -133,18 +132,18 @@ def run_evaluation(checkpoint_path: Path = None, save_cm: bool = True):
     mel_recall = r_cls[mel_idx]
 
     print("-" * 76)
-    print("TỔNG HỢP CHỈ SỐ ĐÁNH GIÁ CHÍNH (MAIN EVALUATION METRICS):")
-    print(f"  * Overall Accuracy       : {acc * 100:6.2f}%   (Tổng độ chính xác toàn bộ)")
-    print(f"  * Balanced Accuracy      : {bal_acc * 100:6.2f}%   (Trung bình Recall các lớp)")
-    print(f"  * Macro F1-score (KEY)   : {macro_f1:6.4f}    (Chỉ số then chốt theo đề bài)")
+    print("OVERALL BENCHMARK EVALUATION METRICS:")
+    print(f"  * Overall Accuracy       : {acc * 100:6.2f}%")
+    print(f"  * Balanced Accuracy      : {bal_acc * 100:6.2f}%")
+    print(f"  * Macro F1-score (KEY)   : {macro_f1:6.4f}")
     print(f"  * Weighted F1-score      : {weighted_f1:6.4f}")
     if macro_auc is not None:
-        print(f"  * Macro OvR ROC-AUC      : {macro_auc:6.4f}    (Khả năng phân biệt đa lớp)")
-    print(f"  * Melanoma (MEL) Recall  : {mel_recall * 100:6.2f}%   [ĐỘ NHẠY UNG THƯ HẮC TỐ CỐT LÕI]")
+        print(f"  * Macro OvR ROC-AUC      : {macro_auc:6.4f}")
+    print(f"  * Melanoma (MEL) Recall  : {mel_recall * 100:6.2f}%   [CRITICAL MINORITY SENSITIVITY]")
     print(f"  * Macro Recall           : {macro_rec * 100:6.2f}%")
     print(f"  * Macro Precision        : {macro_prec * 100:6.2f}%")
     print("-" * 76)
-    print("CHI TIẾT TỪNG LỚP TOÀN BỘ 7 BỆNH (PER-CLASS PERFORMANCE BREAKDOWN):")
+    print("PER-CLASS PERFORMANCE BREAKDOWN (ALL 7 CLASSES):")
     print(f"{'Code':<7} {'Diagnostic Category':<28} {'Precision':<10} {'Recall':<10} {'F1-Score':<10} {'Support'}")
     print("-" * 76)
     for idx, c in enumerate(CLASS_NAMES):
@@ -172,14 +171,12 @@ def run_evaluation(checkpoint_path: Path = None, save_cm: bool = True):
         plt.xlabel("Predicted Class", fontweight="bold")
         plt.tight_layout()
 
-        # Lưu ảnh riêng theo cấu hình để không bị ghi đè lẫn nhau
         out_cm = Path("results") / f"confusion_matrix_{model_name}.png"
         out_cm.parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(out_cm, dpi=300)
-        # Đồng bộ ra file mặc định
         plt.savefig(Path("results/confusion_matrix_test.png"), dpi=300)
         plt.close()
-        print(f"[+] Ma trận nhầm lẫn đã được lưu tại: {out_cm}\n")
+        print(f"[+] Confusion matrix saved at: {out_cm}\n")
 
     return {
         "accuracy": acc, "balanced_accuracy": bal_acc,
@@ -191,6 +188,6 @@ def run_evaluation(checkpoint_path: Path = None, save_cm: bool = True):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Official Test Set Evaluation")
-    parser.add_argument("--checkpoint", type=str, default=None, help="Đường dẫn checkpoint cần đánh giá")
+    parser.add_argument("--checkpoint", type=str, default=None, help="Path to checkpoint .pth file")
     args = parser.parse_args()
     run_evaluation(Path(args.checkpoint) if args.checkpoint else None)

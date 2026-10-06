@@ -16,13 +16,13 @@ The HAM10000 dataset exhibits **severe class imbalance**, where the majority cla
 
 | Code | Diagnostic Category | Clinical Description | Sample Count | Percentage | Imbalance Ratio (vs NV) |
 | :--- | :--- | :--- | :---: | :---: | :---: |
-| **nv** | Melanocytic nevi | Nốt ruồi sắc tố lành tính | 6,705 | 66.95% | 1.00 : 1 |
-| **mel** | Melanoma | Ung thư hắc tố ác tính | 1,113 | 11.11% | 6.02 : 1 |
-| **bkl** | Benign keratosis-like lesions | Dày sừng lành tính | 1,099 | 10.97% | 6.10 : 1 |
-| **bcc** | Basal cell carcinoma | Ung thư biểu mô tế bào đáy | 514 | 5.13% | 13.05 : 1 |
-| **akiec**| Actinic keratoses / IEC | Dày sừng quang hóa / biểu mô | 327 | 3.27% | 20.50 : 1 |
-| **vasc** | Vascular lesions | Tổn thương mạch máu | 142 | 1.42% | 47.22 : 1 |
-| **df** | Dermatofibroma | U xơ da lành tính | 115 | 1.15% | 58.30 : 1 |
+| **nv** | Melanocytic nevi | Benign melanocytic lesions / moles | 6,705 | 66.95% | 1.00 : 1 |
+| **mel** | Melanoma | Malignant melanoma | 1,113 | 11.11% | 6.02 : 1 |
+| **bkl** | Benign keratosis-like lesions | Seborrheic keratoses, solar lentigines | 1,099 | 10.97% | 6.10 : 1 |
+| **bcc** | Basal cell carcinoma | Malignant basal cell carcinoma | 514 | 5.13% | 13.05 : 1 |
+| **akiec**| Actinic keratoses / IEC | Actinic keratoses / intraepithelial carcinoma | 327 | 3.27% | 20.50 : 1 |
+| **vasc** | Vascular lesions | Angiomas, pyogenic granulomas, hemorrhage | 142 | 1.42% | 47.22 : 1 |
+| **df** | Dermatofibroma | Benign dermatofibroma | 115 | 1.15% | 58.30 : 1 |
 | **Total**| **7 Classes** | — | **10,015** | **100.0%** | — |
 
 ---

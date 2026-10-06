@@ -1,5 +1,5 @@
 """
-losses.py - Hàm mất mát xử lý mất cân bằng lớp (Cross-Entropy, Focal Loss, Weighted CE).
+losses.py - Loss Functions for Class Imbalance (Cross-Entropy, Focal Loss, Weighted CE).
 """
 import torch
 import torch.nn as nn
@@ -8,9 +8,9 @@ import torch.nn.functional as F
 
 class FocalLoss(nn.Module):
     """
-    Focal Loss (Lin et al., 2017): Giảm trọng số các mẫu dễ, tập trung vào mẫu khó và lớp hiếm.
-    - Mặc định: Focal Loss thuần (alpha=None) tập trung vào độ khó (modulating factor).
-    - Hỗ trợ alpha tensor cho alpha-balanced Focal Loss khi cần.
+    Focal Loss (Lin et al., 2017): Down-weights easy examples, focusing gradient on hard minority samples.
+    - Default: Pure Focal Loss (alpha=None) focusing on sample difficulty.
+    - Supports optional alpha tensor for alpha-balanced Focal Loss.
     """
     def __init__(self, gamma: float = 2.0, alpha: torch.Tensor = None):
         super().__init__()
@@ -34,10 +34,10 @@ def get_loss_fn(
     device: torch.device = None
 ):
     """
-    Trả về hàm loss tương ứng với cấu hình thực nghiệm.
-    - 'ce': Cross-Entropy tiêu chuẩn.
-    - 'focal': Focal Loss thuần (gamma=2.0). Nếu use_alpha=True thì tính alpha theo class_counts.
-    - 'weighted_ce': Cross-Entropy có trọng số nghịch đảo tần suất lớp.
+    Return loss function corresponding to experimental configuration.
+    - 'ce': Standard Cross-Entropy.
+    - 'focal': Focal Loss (gamma=2.0). Computes class-balanced alpha if use_alpha=True.
+    - 'weighted_ce': Cost-sensitive Cross-Entropy with inverse class frequency weights.
     """
     dev = device or torch.device("cpu")
 
@@ -48,7 +48,7 @@ def get_loss_fn(
         alpha = None
         if use_alpha:
             if class_counts is None:
-                raise ValueError("Cần cung cấp 'class_counts' khi bật use_alpha=True cho Focal Loss.")
+                raise ValueError("'class_counts' is required when use_alpha=True for Focal Loss.")
             counts = torch.tensor(class_counts, dtype=torch.float32)
             alpha = (counts.sum() / (len(counts) * counts))
             alpha = (alpha / alpha.mean()).to(dev)
@@ -56,7 +56,7 @@ def get_loss_fn(
 
     elif loss_type == "weighted_ce":
         if class_counts is None:
-            raise ValueError("Tham số 'class_counts' là bắt buộc đối với loss_type='weighted_ce'.")
+            raise ValueError("Parameter 'class_counts' is required for loss_type='weighted_ce'.")
         counts = torch.tensor(class_counts, dtype=torch.float32)
         weights = counts.sum() / (len(counts) * counts)
         weights = (weights / weights.mean()).to(dev)
@@ -64,6 +64,6 @@ def get_loss_fn(
 
     else:
         raise ValueError(
-            f"Không hỗ trợ loss_type='{loss_type}'. "
-            f"Các lựa chọn hợp lệ: 'ce', 'focal', 'weighted_ce'."
+            f"Unsupported loss_type='{loss_type}'. "
+            f"Valid options: 'ce', 'focal', 'weighted_ce'."
         )

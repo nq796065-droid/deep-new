@@ -1,16 +1,16 @@
 """
-data.py - Module xử lý dữ liệu chuẩn hóa cho HAM10000.
-Thiết kế chính xác theo phân tích khoa học:
-  1. Phân tách tập dữ liệu: Lesion-level Stratified Group Split theo `lesion_id`.
-     Lưu ý khoa học: HAM10000 chỉ có `lesion_id`, không có `patient_id`. Phân tách theo
-     `lesion_id` đảm bảo triệt để không có rò rỉ hình thái của cùng một tổn thương
-     giữa Train/Val/Test (Zero Lesion-Leakage).
-  2. Xử lý ngoại lệ file ảnh: Raise lỗi trực tiếp nếu ảnh hỏng trên tập Val/Test để bảo vệ
-     tính toàn vẹn của metric đánh giá; chỉ log cảnh báo trên tập Train.
-  3. Augmentation tối ưu: Gộp phép xoay và afin vào duy nhất 1 lần biến đổi ma trận để
-     tránh suy hao chất lượng ảnh do nội suy kép.
-  4. Đảm bảo tính tái lập (Reproducibility): Bật cudnn.deterministic=True, cudnn.benchmark=False,
-     kết hợp seed_worker cho DataLoader.
+data.py - Data Processing and Loading Module for HAM10000.
+Key scientific design principles:
+  1. Data Splitting: Lesion-level Stratified Group Split on `lesion_id`.
+     Scientific note: HAM10000 provides `lesion_id` without patient_id.
+     Grouping on `lesion_id` guarantees zero morphological leakage of identical lesions
+     across Train, Val, and Test partitions.
+  2. Exception Handling: Explicitly raises RuntimeError if evaluation images fail to load
+     to preserve metric integrity; logs warning on training split.
+  3. Optimized Augmentation: Merges rotation and affine transformations into a single matrix step
+     to prevent image blurring from double interpolation.
+  4. Full Reproducibility: Enforces cudnn.deterministic=True, cudnn.benchmark=False,
+     combined with seed_worker and explicit PyTorch Generator.
 """
 
 from pathlib import Path
@@ -45,7 +45,7 @@ IMAGENET_STD = [0.229, 0.224, 0.225]
 
 
 def set_seed(seed: int = 42):
-    """Thiết lập seed đồng bộ cho Python, NumPy, PyTorch và CUDA CuDNN."""
+    """Set synchronized random seed across Python, NumPy, PyTorch, and CUDA CuDNN."""
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -56,7 +56,7 @@ def set_seed(seed: int = 42):
 
 
 def seed_worker(worker_id):
-    """Worker init function đảm bảo tính ngẫu nhiên độc lập có thể tái lập."""
+    """Worker initialization function for reproducible multi-process DataLoader."""
     worker_seed = torch.initial_seed() % (2**32)
     np.random.seed(worker_seed)
     random.seed(worker_seed)
@@ -64,9 +64,9 @@ def seed_worker(worker_id):
 
 def get_transforms(is_train: bool = True, use_aug: bool = False):
     """
-    Pipeline biến đổi dữ liệu ảnh.
-    - Train nâng cao (+use_aug): Gộp xoay và biến đổi afin vào 1 bước duy nhất
-      tránh nội suy 2 lần làm giảm độ sắc nét của tổn thương vi mô.
+    Image transformation pipeline.
+    - Advanced Training (+use_aug): Combines rotation and affine into a single transformation
+      to avoid double interpolation blur.
     """
     if is_train:
         t_list = [
@@ -94,8 +94,8 @@ def get_transforms(is_train: bool = True, use_aug: bool = False):
 
 class HAM10000Dataset(Dataset):
     """
-    PyTorch Dataset nạp ảnh trực tiếp từ đường dẫn và metadata.
-    Bảo vệ metric: Raise RuntimeError nếu ảnh val/test bị lỗi.
+    PyTorch Dataset loading images directly from path and metadata.
+    Metric safety: Raises RuntimeError if evaluation images fail to load.
     """
     def __init__(self, df: pd.DataFrame, img_dir: Path, transform=None, is_train: bool = True):
         self.df = df.reset_index(drop=True)
@@ -116,10 +116,10 @@ class HAM10000Dataset(Dataset):
         except Exception as exc:
             if not self.is_train:
                 raise RuntimeError(
-                    f"Lỗi đọc file ảnh tập đánh giá tại '{path}': {exc}. "
-                    "Không thể tiếp tục đánh giá để tránh làm sai lệch metric."
+                    f"Failed to read evaluation image at '{path}': {exc}. "
+                    "Cannot continue evaluation to avoid metric distortion."
                 )
-            logger.warning("Lỗi đọc file ảnh train '%s': %s. Thay tạm bằng ảnh 0.", path, exc)
+            logger.warning("Failed to read training image '%s': %s. Replacing with zero image.", path, exc)
             img = Image.new('RGB', (224, 224))
 
         if self.transform:
@@ -137,7 +137,7 @@ def get_dataloaders(
     pin_memory: bool = None
 ):
     """
-    Khởi tạo Train, Val, Test DataLoaders với phân tách Lesion-Level Grouped Split.
+    Initialize Train, Val, Test DataLoaders with zero-leakage Lesion-Level Grouped Split.
     """
     data_path = Path(data_dir)
     splits_file = data_path / "splits.csv"
@@ -148,12 +148,12 @@ def get_dataloaders(
     if not splits_file.exists():
         set_seed(42)
         meta = pd.read_csv(data_path / "HAM10000_metadata.csv")
-        # Tầng 1: Tách Train (80%) vs Temp (20%) theo lesion_id
+        # Tier 1: Split Train (80%) vs Temp (20%) on lesion_id
         sgkf = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=42)
         train_idx, temp_idx = next(sgkf.split(meta, meta['dx'], meta['lesion_id']))
         temp_meta = meta.iloc[temp_idx]
 
-        # Tầng 2: Tách Temp thành Val (10%) và Test (10%) theo lesion_id
+        # Tier 2: Split Temp into Val (10%) and Test (10%) on lesion_id
         sgkf2 = StratifiedGroupKFold(n_splits=2, shuffle=True, random_state=42)
         v_local, t_local = next(sgkf2.split(temp_meta, temp_meta['dx'], temp_meta['lesion_id']))
 
@@ -181,7 +181,6 @@ def get_dataloaders(
         class_counts = train_df['dx'].value_counts()
         sample_weights = [1.0 / class_counts[dx] for dx in train_df['dx']]
         tensor_weights = torch.as_tensor(sample_weights, dtype=torch.double)
-        # Truyền trực tiếp generator vào WeightedRandomSampler để kiểm soát seed chuẩn xác
         sampler = WeightedRandomSampler(
             tensor_weights,
             num_samples=len(tensor_weights),
