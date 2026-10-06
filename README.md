@@ -32,11 +32,11 @@ skin-lesion-classification/
 │   ├── __init__.py
 │   └── resnet.py               # Kiến trúc mạng ResNet-50 phân loại 7 lớp
 ├── results/                    # Checkpoint trọng số mô hình và báo cáo
-│   ├── baseline/best_model.pth
-│   ├── weighted_sampling/best_model.pth (Best Model Checkpoint)
-│   ├── focal_loss/best_model.pth
-│   ├── augmentation/best_model.pth
-│   ├── combined/best_model.pth
+│   ├── weighted_sampling_model.pth (Best Model Checkpoint - Macro F1: 0.6905)
+│   ├── baseline_model.pth
+│   ├── focal_loss_model.pth
+│   ├── augmentation_model.pth
+│   ├── combined_model.pth
 │   ├── comparison.csv          # Bảng tổng hợp so sánh 5 cấu hình
 │   ├── comparison_chart.png    # Biểu đồ cột so sánh trực quan các chỉ số
 │   ├── per_class_recall_comparison.png # So sánh độ nhạy trên các lớp hiếm
@@ -46,10 +46,8 @@ skin-lesion-classification/
 ├── data.py                     # Quản lý Dataset, Transforms, Grouped K-Fold split
 ├── losses.py                   # Triển khai Cross-Entropy, Focal Loss, Class-Balanced Loss
 ├── train.py                    # Pipeline huấn luyện, scheduler, checkpointing
-├── test.py                     # Script kiểm thử chính thức trên 1,431 ảnh tập Test
-├── predict.py                  # Script dự đoán trực tiếp 1 ảnh không cần web server
-├── main.py                     # Điểm thực thi chính (hỗ trợ dự đoán trực tiếp & kiểm thử)
-├── experiments.py              # Runner tự động chạy và đánh giá benchmark
+├── evaluate.py                 # Đánh giá toàn diện trên 1,431 ảnh tập Test
+├── main.py                     # Điểm thực thi chính (hỗ trợ dự đoán trực tiếp, test & train)
 ├── DATA.md                     # Tài liệu chi tiết về đặc tả dữ liệu và quy trình chuẩn bị
 ├── requirements.txt            # Danh sách thư viện phụ thuộc
 └── README.md                   # Hướng dẫn sử dụng và báo cáo tổng quan
@@ -77,30 +75,30 @@ pip install -r requirements.txt
 ### 1. Kiểm thử mô hình trên toàn bộ tập Test (Chuẩn đề bài)
 Chạy kiểm định mô hình tốt nhất (`Weighted Sampling`) trên toàn bộ 1,431 ảnh kiểm thử độc lập (không rò rỉ dữ liệu). Tự động in bảng chỉ số tổng quan, bảng chi tiết từng lớp và lưu biểu đồ ma trận nhầm lẫn:
 ```bash
-python test.py
+python evaluate.py
+# Hoặc chạy qua main:
+python main.py --test
 ```
 *(Chỉ định checkpoint tùy chọn nếu muốn so sánh cấu hình khác)*:
 ```bash
-python test.py --checkpoint results/baseline/best_model.pth
+python evaluate.py results/baseline_model.pth
 ```
 
 ### 2. Dự đoán trực tiếp ảnh tổn thương da (Không cần Web Server)
 Nhập đường dẫn trực tiếp của một file ảnh JPG bất kỳ, script sẽ lập tức tiền xử lý, tính toán phân phối xác suất trên toàn bộ 7 loại bệnh, đưa ra chẩn đoán có xác suất cao nhất cùng mức độ rủi ro lâm sàng:
 ```bash
 # Dự đoán một ảnh cụ thể:
-python predict.py --image data/images/ISIC_0024306.jpg
+python main.py --image sample_images/mel_ISIC_0025964.jpg
 
-# Hoặc chạy kiểm tra nhanh một ảnh ngẫu nhiên trong dataset:
-python predict.py
+# Hoặc chạy kiểm tra nhanh một ảnh ngẫu nhiên:
+python main.py
 ```
 
-### 3. Thực thi nhanh qua `main.py`
+### 3. Huấn luyện mô hình mới
 ```bash
-# Dự đoán ảnh:
-python main.py --image data/images/ISIC_0026273.jpg
-
-# Hoặc chạy kiểm thử tập test:
-python main.py --test
+python train.py --epochs 15 --weighted_sampler
+# Hoặc chạy qua main:
+python main.py --train --epochs 15
 ```
 
 ---
