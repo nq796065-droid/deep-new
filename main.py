@@ -77,8 +77,7 @@ def predict_image(image_path: Path, checkpoint_path: Path = None):
     for idx in probs.argsort()[::-1]:
         cname = CLASS_NAMES[idx]
         p = probs[idx] * 100.0
-        bar = "#" * int(p // 4)
-        print(f"  [{cname.upper():<5}] {CLASS_FULL_NAMES[cname]:<42} : {p:5.2f}% | {bar}")
+        print(f"  [{cname.upper():<5}] {CLASS_FULL_NAMES[cname]:<42} : {p:5.2f}%")
     print("-" * 74)
     print(f">> TOP DIAGNOSIS  : {top_class.upper()} - {CLASS_FULL_NAMES[top_class]} ({top_prob:.2f}%)")
     print(f">> RISK ASSESSMENT: {risk}")
